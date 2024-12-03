@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gra: Latające Obiekty</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        canvas {
+            border: 2px solid black;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: black;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+        }
+
+        button {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            font-size: 16px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="info">
+        <p>Czas przetrwania: <span id="currentTime">0</span> s</p>
+        <p>Średni czas: <span id="averageTime">0</span> s</p>
+    </div>
+    <button id="resetButton">Resetuj grę</button>
+
+    <script src="FlyingObject.js"></script>
+    <script src="AutonomousObject.js"></script>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const context = canvas.getContext("2d");
+
+        const flyingObject = new FlyingObject(100, 100, 5);
+        const autonomousObject = new AutonomousObject(200, 200, 2);
+
+        let startTime = Date.now();
+        let gameRunning = true;
+
+        let bestTime = localStorage.getItem('bestTime') ? parseFloat(localStorage.getItem('bestTime')) : 0;
+        let totalTime = 0;
+        let gameCount = 0;
+
+        function updateTimeDisplay() {
+            if (gameRunning) {
+                const currentTime = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById("currentTime").textContent = currentTime;
+                updateBestAndAverageTime(currentTime);
+            }
+        }
+
+        function updateBestAndAverageTime(currentTime) {
+            if (currentTime > bestTime) {
+                bestTime = currentTime;
+                localStorage.setItem('bestTime', bestTime);
+                document.getElementById("bestTime").textContent = bestTime;
+            }
+
+            totalTime += currentTime;
+            gameCount++;
+            const averageTime = (totalTime / gameCount).toFixed(2);
+            document.getElementById("averageTime").textContent = averageTime;
+        }
+
+        document.getElementById("resetButton").addEventListener('click', resetGame);
+
+        function resetGame() {
+            flyingObject.resetPosition();
+            autonomousObject.resetPosition();
+            startTime = Date.now();
+            gameRunning = true;
+            updateTimeDisplay();
+            gameLoop();
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === "ArrowUp") flyingObject.moveUp();
+            if (event.key === "ArrowDown") flyingObject.moveDown();
+            if (event.key === "ArrowLeft") flyingObject.moveLeft();
+            if (event.key === "ArrowRight") flyingObject.moveRight();
+        });
+
+        function gameLoop() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            flyingObject.draw(context);
+            autonomousObject.move();
+            autonomousObject.draw(context);
+
+            if (autonomousObject.checkCollision(flyingObject)) {
+                gameRunning = false;
+                alert("Koniec gry! Kolizja!");
+                return;
+            }
+
+            if (flyingObject.x < 0 || flyingObject.x + flyingObject.width > canvas.width ||
+                flyingObject.y < 0 || flyingObject.y + flyingObject.height > canvas.height) {
+                gameRunning = false;
+                alert("Koniec gry! Wypadłeś poza ekran!");
+                return;
+            }
+
+            updateTimeDisplay();
+            if (gameRunning) requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
+
